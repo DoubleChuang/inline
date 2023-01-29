@@ -1,0 +1,9 @@
+.env*
+docker-compose.yaml
+Dockerfile
+scripts/
+.github/
+.git/
+.git*
+chromedriver
+.vscode
