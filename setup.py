@@ -15,8 +15,9 @@ with codecs.open(
 
 install_requires = [
     "requests==2.27.1",
-    "selenium==4.8.0",
-    "pydantic==1.10.4"
+    "selenium==4.7.2",
+    "pydantic==1.10.4",
+    "undetected-chromedriver==3.2.0",
 ]
 
 dev_require = ["black==19.10b0", "pylint==2.5.0", "wheel==0.34.2"]

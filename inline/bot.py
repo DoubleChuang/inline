@@ -1,8 +1,10 @@
+# -*- coding: utf-8 -*-
 import os
 import time
 from pathlib import Path
 from datetime import datetime, timezone, timedelta
 import requests
+import undetected_chromedriver as uc
 from selenium import webdriver
 from selenium.webdriver.chrome.options import Options
 from selenium.webdriver.common.desired_capabilities import DesiredCapabilities
@@ -10,7 +12,6 @@ from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import Select
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
-import undetected_chromedriver as uc
 
 from inline.logger import error_logger, logger
 from inline.schema import OrderInfo, Gender, Meal
@@ -49,9 +50,9 @@ class inline:
             
             self._chrome.save_screenshot(f'{screen_path}')
 
-    def _elem_scoll(self, locator, wait_sec=1):
+    def _elem_scoll(self, locator, wait_sec=1, scroll=False):
         elem = WebDriverWait(self._chrome, 10).until(EC.presence_of_element_located(locator))
-        self._chrome.execute_script("arguments[0].scrollIntoView(false);", elem)
+        self._chrome.execute_script(f"arguments[0].scrollIntoView({'true' if scroll else 'false'});", elem)
         self.wait_loading(wait_sec=wait_sec)
         # elem.click()
         return elem
@@ -68,7 +69,7 @@ class inline:
             Select(adult_picker).select_by_visible_text(f"{order_info.adult_num}位大人")
             
             # 選擇日期
-            date_picker = self._elem_scoll((By.ID, "date-picker"))
+            date_picker = self._elem_scoll((By.ID, "date-picker"), scroll=True)
             date_picker.click()
             
             # 調整要點擊的月份出現在最左邊 避免沒有顯示該月份導致無法點擊
@@ -89,9 +90,16 @@ class inline:
                     # 往下一個月份
                     WebDriverWait(self._chrome, 10).until(EC.presence_of_element_located((By.XPATH, "//*[@id='calendar-picker']/div[2]/div[1]/a[2]"))).click()
             
-            # 3/13 =>  //*[@id="calendar-picker"]/div[2]/div[3]/div[3]/div[2]/div[2]/span
-            date_elem = self._elem_scoll((By.XPATH, "//div[@id='calendar-picker']/div/div[3]/div[4]/div[4]/div[2]/span"))
-            date_elem.click()
+            
+            try:
+                # 2/22
+                # date_elem = self._elem_scoll((By.XPATH, "//*[@id='calendar-picker']/div[1]/div[3]/div[4]/div[4]/div[2]"), scroll=True)
+                # 3/13 =>  "//*[@id='calendar-picker']/div[2]/div[3]/div[3]/div[2]/div[2]/span"
+                date_elem = self._elem_scoll((By.XPATH, "//*[@id='calendar-picker']/div[1]/div[3]/div[3]/div[2]/div[2]/span"), scroll=True)
+                date_elem.click()
+            except Exception as e:
+                logger.error(f"failed to click date element")
+                raise Exception("failed to click date element")
             
             logger.info(f"date_elem.text: {date_elem.text}")
             

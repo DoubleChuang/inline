@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 from pydantic import BaseModel, NonNegativeInt
 from datetime import datetime
 from enum import Enum, auto
