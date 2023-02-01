@@ -18,7 +18,7 @@ from inline.schema import OrderInfo, Gender, Meal
 
 class inline:
     def __init__(self, use_remote: bool = False):
-        self._url = "https://inline.app/booking/-M7q3CM0PAKAdJnHqyPe:inline-live-1/-M7q3CQ84DLcq93tijAx?language=zh-tw"
+        self._url = "https://inline.app/booking/yinmi117/yinmi117"
         self._case_status = ""
         self._chrome = None
         
@@ -57,18 +57,18 @@ class inline:
         # elem.click()
         return elem
     
-    # 人數 日期 時間 姓名 性別 電話 套餐 備注
-    def query_case_status(self, order_info: OrderInfo): # remove default value
-        try:
-            # 進入訂餐網站
-            self._chrome.get(self._url)
-            self.wait_loading()
-            
-            # 選擇人數
-            adult_picker = self._elem_scoll((By.ID, "adult-picker"))
-            Select(adult_picker).select_by_visible_text(f"{order_info.adult_num}位大人")
-            
-            # 選擇日期
+    # 進入訂餐網站
+    def enter_reserve_website(self):    
+        self._chrome.get(self._url)
+        self.wait_loading()
+    
+    # 選擇人數
+    def select_adult(self, adult_num):
+        adult_picker = self._elem_scoll((By.ID, "adult-picker"))
+        Select(adult_picker).select_by_visible_text(f"{adult_num}位大人")
+    
+    def select_datetime(self, order_datetime: datetime):
+        # 選擇日期
             date_picker = self._elem_scoll((By.ID, "date-picker"), scroll=True)
             date_picker.click()
             
@@ -79,23 +79,33 @@ class inline:
                 logger.info(f"month_elem.text: {month_elem.text}")
                 format = "%Y年%m月"
                 date = datetime.strptime(month_elem.text, format)
-                if date.year == order_info.meal_datetime.year and \
-                    date.month == order_info.meal_datetime.month:
+                if date.year == order_datetime.year and \
+                    date.month == order_datetime.month:
                         break
                 
-                if date > order_info.meal_datetime:
+                if date > order_datetime:
                     # 往上一個月份
                     WebDriverWait(self._chrome, 10).until(EC.presence_of_element_located((By.XPATH, "//*[@id='calendar-picker']/div[1]/div[1]/a[1]"))).click()
                 else:
                     # 往下一個月份
                     WebDriverWait(self._chrome, 10).until(EC.presence_of_element_located((By.XPATH, "//*[@id='calendar-picker']/div[2]/div[1]/a[2]"))).click()
             
+            # 找出要預訂的日期div位置
+            date_l2_c1 = self._chrome.find_element(By.XPATH, '//*[@id="calendar-picker"]/div[1]/div[3]/div[2]/div[1]/div[2]/span')
+            date_l2_c1 = int(date_l2_c1.text)
+            order_day = order_datetime.day
+            day_diff = order_day - date_l2_c1
+            if day_diff < 0:
+                day = order_day
+                week = 1
+            else:
+                week = (day_diff//7)+2
+                day = (day_diff%7)+1
+            
+            logger.info(f'week: {week}, day: {day}')
             
             try:
-                # 2/22
-                # date_elem = self._elem_scoll((By.XPATH, "//*[@id='calendar-picker']/div[1]/div[3]/div[4]/div[4]/div[2]"), scroll=True)
-                # 3/13 =>  "//*[@id='calendar-picker']/div[2]/div[3]/div[3]/div[2]/div[2]/span"
-                date_elem = self._elem_scoll((By.XPATH, "//*[@id='calendar-picker']/div[1]/div[3]/div[3]/div[2]/div[2]/span"), scroll=True)
+                date_elem = self._elem_scoll((By.XPATH, f'//*[@id="calendar-picker"]/div[1]/div[3]/div[{week}]/div[{day}]/div[2]/span'), scroll=True)
                 date_elem.click()
             except Exception as e:
                 logger.error(f"failed to click date element")
@@ -103,14 +113,43 @@ class inline:
             
             logger.info(f"date_elem.text: {date_elem.text}")
             
-            # # 選擇時間 17:30
-            # time_elem = self._elem_scoll((By.XPATH, "//div[@id='book-now-content']/div[4]/button[1]"))
-            # time_elem.click()
+            try:
+                date_all_booked = self._chrome.find_element(By.XPATH, '//*[@id="book-now-content"]/div/p')
+                logger.info(f"date_all_booked message: {date_all_booked.text}")
+            except Exception as e:
+                logger.info("This date can be reserved")
+            else:
+                raise Exception("This date can not be reserved")
             
-            # 選擇時間 19:30
-            time_elem = self._elem_scoll((By.XPATH, "//div[@id='book-now-content']/div[4]/button[2]"))
+            if order_datetime.hour == 11 and order_datetime.minute == 30:
+                time_xpath_val = '//*[@id="book-now-content"]/div[2]/button'
+            elif order_datetime.hour == 17 and order_datetime.minute == 30:
+                time_xpath_val = '//*[@id="book-now-content"]/div[4]/button[1]'
+            else:
+                time_xpath_val = "//div[@id='book-now-content']/div[4]/button[2]"
+            
+            # 查看是否有 提示 "登記候補" 的 span
+            try:
+                time_xpath_val_tip = f"{time_xpath_val}/span[3]"
+                time_all_booked = self._chrome.find_element(By.XPATH, time_xpath_val_tip)
+                logger.info(f"time_all_booked message: {time_all_booked.text}")
+            except Exception as e:
+                logger.info("This time can be reserved")
+            else:
+                raise Exception("This time can not be reserved")
+            
+            time_elem = self._elem_scoll((By.XPATH, time_xpath_val))
             time_elem.click()
-            
+        
+    # 人數 日期 時間 姓名 性別 電話 套餐 備注
+    def reserve_table(self, order_info: OrderInfo): # remove default value
+        try:
+            # 進入訂餐網站
+            self.enter_reserve_website()
+            # 選擇人數
+            self.select_adult(adult_num=order_info.adult_num)
+            # 選擇日期
+            self.select_datetime(order_datetime=order_info.meal_datetime)
             # 下一步填寫資訊
             more_elem = self._elem_scoll((By.XPATH, "//div[@id='book-now-action-bar']/div[2]/button/span/span"))
             more_elem.click()
@@ -166,8 +205,7 @@ class inline:
             return err_msg
     
     def run(self, order_info: OrderInfo, final_screen_path: str):
-        logger.info("1. query_case_status")
-        self.query_case_status(order_info)
+        self.reserve_table(order_info)
         self.capture_screen(final_screen_path)
         logger.info("Done !!")
 
