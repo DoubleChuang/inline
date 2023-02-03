@@ -1,5 +1,5 @@
 # Inline
-
+[![Docker Image CI](https://github.com/DoubleChuang/inline/actions/workflows/docker-image.yml/badge.svg?branch=main)](https://github.com/DoubleChuang/inline/actions/workflows/docker-image.yml)
 ### run from source
 ```
 pyenv activate inline
@@ -26,7 +26,8 @@ LINE_TOKEN=
 FINAL_SCREEN_PATH=/final_screen
 INLINE_CONFIG_PATH=/config.json
 ```
-> If you have not adjusted the container name and binding port, you do not need to adjust **CHROME_REMOTE_URL**
+> If you do not want to take a screenshot when bot finishes, you can leave `FINAL_SCREEN_PATH` empty
+> If you do not want to line notifications, leave `LINE_TOKEN` empty
 
 #### Create and start containers
 ```
@@ -37,11 +38,3 @@ docker-compose up -d
 ```
 docker-compose down
 ```
-
-
-### reference
-
-
-
-### TODO
-- [ ] crontab
